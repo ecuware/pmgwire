@@ -27,9 +27,24 @@ func main() {
 	initActions()
 
 	rootCmd := &cobra.Command{
-		Use:   "pmgwire",
-		Short: "PMGWire - Proxmox Mail Gateway Workflow Engine",
-		Long:  "A declarative workflow engine for Proxmox Mail Gateway. Automate PMG operations using YAML configuration files.",
+		Use:   "pmgwire [command]",
+		Short: "PMGWire — Declarative workflow engine for Proxmox Mail Gateway",
+		Long: heredoc(`
+			PMGWire — Declarative workflow engine for Proxmox Mail Gateway
+
+			Automate PMG operations using YAML workflow definitions.
+			Chain quarantine delivery, blacklist management, reporting
+			and more into reproducible, shareable workflows.
+
+			Quick start:
+			  pmgwire init my-task              Create a new workflow template
+			  pmgwire apply my-task.yaml        Execute a workflow
+			  pmgwire apply my-task.yaml --tui  Execute with interactive TUI
+			  pmgwire validate my-task.yaml     Check a workflow for errors
+
+			Get started:
+			  https://github.com/ecuware/pmgwire
+		`),
 	}
 
 	rootCmd.PersistentFlags().StringVar(&hostFlag, "host", "", "PMG host URL (overrides workflow config)")
@@ -39,47 +54,100 @@ func main() {
 	applyCmd := &cobra.Command{
 		Use:   "apply <workflow.yaml>",
 		Short: "Execute a workflow",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runApply,
+		Long: heredoc(`
+			Execute a workflow defined in a YAML file.
+
+			The workflow is parsed, variables are resolved (from flags,
+			environment variables, or interactive prompts), and each step
+			is executed in order.
+
+			Use --dry-run to preview what would happen without making changes.
+			Use --tui to run with an interactive terminal interface.
+		`),
+		Example: heredoc(`
+			pmgwire apply workflows/builtin/deliver-spam.yaml
+			pmgwire apply my-workflow.yaml --dry-run
+			pmgwire apply my-workflow.yaml --tui
+			pmgwire apply my-workflow.yaml --host https://pmg.example.com --token MYTOKEN
+		`),
+		Args: cobra.ExactArgs(1),
+		RunE: runApply,
 	}
-	applyCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Dry run mode (no changes)")
+	applyCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Preview changes without executing them")
 	applyCmd.Flags().BoolVar(&tuiFlag, "tui", false, "Run with interactive TUI")
 	rootCmd.AddCommand(applyCmd)
 
 	tuiCmd := &cobra.Command{
 		Use:   "tui <workflow.yaml>",
 		Short: "Run workflow with interactive TUI",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runTUI,
+		Long: heredoc(`
+			Run a workflow using the interactive terminal interface.
+
+			Shows step-by-step progress with colored output, spinners,
+			and summaries. Equivalent to: pmgwire apply <file> --tui
+		`),
+		Example: heredoc(`
+			pmgwire tui workflows/builtin/deliver-spam.yaml
+			pmgwire tui my-workflow.yaml
+		`),
+		Args: cobra.ExactArgs(1),
+		RunE: runTUI,
 	}
 	rootCmd.AddCommand(tuiCmd)
 
 	validateCmd := &cobra.Command{
 		Use:   "validate <workflow.yaml>",
 		Short: "Validate a workflow file",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runValidate,
+		Long: heredoc(`
+			Check a workflow YAML file for errors.
+
+			Verifies: required fields, unique step IDs, known actions,
+			and template syntax. Does not connect to a PMG server.
+		`),
+		Example: heredoc(`
+			pmgwire validate my-workflow.yaml
+		`),
+		Args: cobra.ExactArgs(1),
+		RunE: runValidate,
 	}
 	rootCmd.AddCommand(validateCmd)
 
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "List available workflows and actions",
-		RunE:  runList,
+		Short: "List available actions and workflow directory",
+		Long: heredoc(`
+			Display all registered actions that can be used in workflow
+			steps, along with the directory where local workflows are stored.
+		`),
+		Example: heredoc(`
+			pmgwire list
+		`),
+		RunE: runList,
 	}
 	rootCmd.AddCommand(listCmd)
 
 	initCmd := &cobra.Command{
 		Use:   "init <name>",
 		Short: "Create a new workflow template",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runInit,
+		Long: heredoc(`
+			Create a new workflow template file in the workflow directory.
+
+			A skeleton YAML file is generated with the most common
+			fields pre-filled. Edit it to define your workflow.
+		`),
+		Example: heredoc(`
+			pmgwire init deliver-monthly
+			pmgwire init sync-blacklist
+		`),
+		Args: cobra.ExactArgs(1),
+		RunE: runInit,
 	}
 	rootCmd.AddCommand(initCmd)
 
 	versionCmd := &cobra.Command{
 		Use:   "version",
-		Short: "Print version",
+		Short: "Print version information",
+		Long:  "Display the PMGWire version number.",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("pmgwire v%s\n", version)
 		},
@@ -231,15 +299,34 @@ func runValidate(cmd *cobra.Command, args []string) error {
 func runList(cmd *cobra.Command, args []string) error {
 	fmt.Println(tui.TitleStyle.Render(fmt.Sprintf(" %s Available Actions ", tui.AppIcon)))
 	fmt.Println()
-	for name := range actions.All() {
-		fmt.Printf("  %s %s\n", tui.BrandNormal.Render(tui.ArrowIcon), name)
+
+	actionGroups := map[string][]string{
+		"Quarantine": {"quarantine.list", "quarantine.deliver", "quarantine.delete"},
+		"Rule Database": {"ruledb.who.list", "ruledb.who.add", "ruledb.who.remove"},
+		"Transform":   {"transform.deduplicate", "transform.filter", "transform.extract"},
+		"Report":      {"report.console", "report.file", "report.json"},
+	}
+
+	registered := actions.All()
+	for group, actionNames := range actionGroups {
+		fmt.Printf("  %s\n", tui.BrandBold.Render(group))
+		for _, name := range actionNames {
+			icon := "  "
+			if _, ok := registered[name]; ok {
+				icon = tui.SuccessStyle.Render(tui.OKIcon + " ")
+			} else {
+				icon = tui.DimStyle.Render("○ ")
+			}
+			fmt.Printf("    %s %s\n", icon, name)
+		}
+		fmt.Println()
 	}
 
 	cfg := config.DefaultConfig()
-	fmt.Println()
 	fmt.Println(tui.TitleStyle.Render(fmt.Sprintf(" %s Workflow Directory ", tui.AppIcon)))
-	fmt.Printf("  %s\n", cfg.WorkflowsDir)
+	fmt.Printf("  %s\n\n", cfg.WorkflowsDir)
 
+	fmt.Println(tui.DimStyle.Render("  Use 'pmgwire init <name>' to create a new workflow template."))
 	return nil
 }
 
@@ -283,5 +370,22 @@ steps:
 	}
 
 	fmt.Println(tui.SuccessStyle.Render(fmt.Sprintf("  %s Created workflow template:", tui.OKIcon)), filePath)
+	fmt.Println()
+	fmt.Println(tui.DimStyle.Render("  Edit the file and run:"))
+	fmt.Printf("  pmgwire apply %s\n", filePath)
 	return nil
+}
+
+func heredoc(s string) string {
+	s = strings.TrimPrefix(s, "\n")
+	lines := strings.Split(s, "\n")
+	var trimmed []string
+	for _, line := range lines {
+		if strings.HasPrefix(line, "\t\t") {
+			trimmed = append(trimmed, line[2:])
+		} else {
+			trimmed = append(trimmed, line)
+		}
+	}
+	return strings.Join(trimmed, "\n")
 }
