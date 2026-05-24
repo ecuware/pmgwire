@@ -1,0 +1,52 @@
+name: blacklist-bulk
+description: "Bulk add emails/domains to Who Objects"
+version: "1.0"
+
+auth:
+  host: "https://localhost:8006"
+  insecure: false
+
+vars:
+  who_id:
+    prompt: "Target Who Object ID"
+    required: true
+  mode:
+    default: "auto"
+    prompt: "Mode (auto|email|domain)"
+  entries_file:
+    prompt: "Email/domain list file path"
+    required: true
+
+steps:
+  - id: load-existing
+    action: ruledb.who.list
+    params:
+      who_id: "{{ .vars.who_id }}"
+    output: existing_entries
+
+  - id: load-entries
+    action: transform.extract
+    params:
+      file: "{{ .vars.entries_file }}"
+    output: raw_entries
+
+  - id: deduplicate
+    action: transform.deduplicate
+    input: raw_entries
+    params:
+      mode: "{{ .vars.mode }}"
+    output: new_entries
+
+  - id: add-entries
+    action: ruledb.who.add
+    params:
+      who_id: "{{ .vars.who_id }}"
+      mode: "{{ .vars.mode }}"
+    input: new_entries
+    on_error: continue
+
+  - id: summary
+    action: report.console
+    input: add-entries
+    params:
+      template: "blacklist-summary"

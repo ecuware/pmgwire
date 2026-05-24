@@ -1,0 +1,37 @@
+name: deliver-spam
+description: "Filter and deliver spam from quarantine"
+version: "1.0"
+
+auth:
+  host: "https://localhost:8006"
+  insecure: false
+
+vars:
+  sender_filter:
+    default: "*"
+    prompt: "Sender filter (domain or email)"
+  receiver_filter:
+    default: "*"
+    prompt: "Receiver domain filter"
+
+steps:
+  - id: fetch-quarantine
+    action: quarantine.list
+    params:
+      type: spam
+    filters:
+      sender: "{{ .vars.sender_filter }}"
+      receiver: "{{ .vars.receiver_filter }}"
+    output: spam_list
+
+  - id: deliver-matched
+    action: quarantine.deliver
+    input: spam_list
+    confirm: true
+    on_error: continue
+
+  - id: summary
+    action: report.console
+    input: deliver-matched
+    params:
+      template: "deliver-summary"

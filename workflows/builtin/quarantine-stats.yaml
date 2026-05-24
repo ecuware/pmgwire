@@ -1,0 +1,26 @@
+name: quarantine-stats
+description: "Show quarantine statistics"
+version: "1.0"
+
+auth:
+  host: "https://localhost:8006"
+  insecure: false
+
+steps:
+  - id: list-spam
+    action: quarantine.list
+    params:
+      type: spam
+    output: spam_mails
+
+  - id: list-virus
+    action: quarantine.list
+    params:
+      type: virus
+    output: virus_mails
+
+  - id: summary
+    action: report.console
+    input: spam_mails
+    params:
+      template: "deliver-summary"
