@@ -1,0 +1,36 @@
+name: add-content-filter
+description: "Add content types and patterns to a What Object"
+version: "1.0"
+
+auth:
+  host: "https://localhost:8006"
+  insecure: false
+
+vars:
+  what_id:
+    prompt: "Target What Object ID"
+    required: true
+  mode:
+    default: "auto"
+    prompt: "Mode (contenttype|pattern|field|auto)"
+
+steps:
+  - id: load-entries
+    action: transform.extract
+    params:
+      file: "{{ .vars.entries_file }}"
+    output: raw_entries
+
+  - id: add-entries
+    action: ruledb.what.add
+    params:
+      what_id: "{{ .vars.what_id }}"
+      mode: "{{ .vars.mode }}"
+    input: raw_entries
+    on_error: continue
+
+  - id: summary
+    action: report.console
+    input: add-entries
+    params:
+      template: "blacklist-summary"

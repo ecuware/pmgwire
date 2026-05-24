@@ -116,6 +116,12 @@ steps:
 | `ruledb.who.list` | List emails and domains in a Who Object |
 | `ruledb.who.add` | Add emails/domains to a Who Object |
 | `ruledb.who.remove` | Remove emails/domains from a Who Object |
+| `ruledb.what.list` | List What Objects and their content |
+| `ruledb.what.add` | Add content types, patterns, or fields to a What Object |
+| `ruledb.what.remove` | Remove entries from or delete a What Object |
+| `ruledb.rule.list` | List mail filter rules |
+| `ruledb.rule.create` | Create a new mail filter rule |
+| `ruledb.rule.remove` | Delete a mail filter rule |
 | `transform.deduplicate` | Remove duplicate entries |
 | `transform.filter` | Filter entries by pattern |
 | `transform.extract` | Load entries from a file |

@@ -301,10 +301,12 @@ func runList(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	actionGroups := map[string][]string{
-		"Quarantine": {"quarantine.list", "quarantine.deliver", "quarantine.delete"},
-		"Rule Database": {"ruledb.who.list", "ruledb.who.add", "ruledb.who.remove"},
-		"Transform":   {"transform.deduplicate", "transform.filter", "transform.extract"},
-		"Report":      {"report.console", "report.file", "report.json"},
+		"Quarantine":    {"quarantine.list", "quarantine.deliver", "quarantine.delete"},
+		"Rule Database - Who":  {"ruledb.who.list", "ruledb.who.add", "ruledb.who.remove"},
+		"Rule Database - What": {"ruledb.what.list", "ruledb.what.add", "ruledb.what.remove"},
+		"Rule Database - Rule": {"ruledb.rule.list", "ruledb.rule.create", "ruledb.rule.remove"},
+		"Transform":     {"transform.deduplicate", "transform.filter", "transform.extract"},
+		"Report":        {"report.console", "report.file", "report.json"},
 	}
 
 	registered := actions.All()

@@ -1,0 +1,21 @@
+name: manage-rules
+description: "List, create, or delete mail filter rules"
+version: "1.0"
+
+auth:
+  host: "https://localhost:8006"
+  insecure: false
+
+vars:
+  action_mode:
+    default: "list"
+    prompt: "Action (list|create|remove)"
+
+steps:
+  - id: list-rules
+    action: ruledb.rule.list
+    output: rules
+
+  - id: summary
+    action: report.console
+    input: list-rules

@@ -47,7 +47,7 @@ Output fields: `deleted` (int), `failed` (int), `total` (int)
 
 ---
 
-## Rule Database
+## Rule Database — Who Objects
 
 ### ruledb.who.list
 
@@ -96,6 +96,141 @@ Remove emails from a Who Object.
 ```
 
 Output fields: `who_id` (int)
+
+---
+
+## Rule Database — What Objects
+
+### ruledb.what.list
+
+List What Objects or show details of a specific one.
+
+```yaml
+# List all What Objects
+- id: list-all
+  action: ruledb.what.list
+  output: what_objects
+
+# Show details of a specific What Object
+- id: list-detail
+  action: ruledb.what.list
+  params:
+    what_id: 3               # Optional. Show content types, patterns, fields
+  output: what_detail
+```
+
+Output fields (no what_id): `what_objects` (list), `count` (int)
+Output fields (with what_id): `what_id` (int), `content_types` (list), `patterns` (list), `fields` (list)
+
+### ruledb.what.add
+
+Add content types, patterns, or fields to a What Object. Or create a new one.
+
+```yaml
+# Add entries to existing What Object
+- id: add-patterns
+  action: ruledb.what.add
+  params:
+    what_id: 3
+    mode: pattern              # contenttype | pattern | field | auto
+  input: raw_entries
+  on_error: continue
+
+# Create a new What Object
+- id: create-what
+  action: ruledb.what.add
+  params:
+    create: true
+    name: "Blocked Attachments"
+```
+
+Mode behavior:
+- **contenttype** — Add as MIME content type (e.g. `application/zip`)
+- **pattern** — Add as filename pattern (e.g. `*.exe`)
+- **field** — Add as header field name (e.g. `X-Spam-Flag`)
+- **auto** — Auto-detect: `/` → content type, `X-` prefix → field, else → pattern
+
+Output fields: `what_id` (int), `added_content_types` (list), `added_patterns` (list), `added_fields` (list), `success` (int), `failed` (int)
+
+### ruledb.what.remove
+
+Remove entries from a What Object or delete it entirely.
+
+```yaml
+# Remove specific patterns
+- id: remove-patterns
+  action: ruledb.what.remove
+  params:
+    what_id: 3
+    mode: pattern              # contenttype | pattern | field
+  input: entries
+
+# Delete entire What Object
+- id: delete-what
+  action: ruledb.what.remove
+  params:
+    what_id: 3
+    delete: true
+```
+
+Output fields: `what_id` (int), `success` (int), `failed` (int)
+
+---
+
+## Rule Database — Rules
+
+### ruledb.rule.list
+
+List all rules or show details of a specific rule.
+
+```yaml
+# List all rules
+- id: list-rules
+  action: ruledb.rule.list
+  output: rules
+
+# Show single rule details
+- id: list-rule
+  action: ruledb.rule.list
+  params:
+    rule_id: 5               # Optional. Show rule details
+  output: rule_detail
+```
+
+Output fields (no rule_id): `rules` (list), `count` (int)
+Output fields (with rule_id): `rule_id` (int), `raw` (JSON)
+
+### ruledb.rule.create
+
+Create a new mail filter rule.
+
+```yaml
+- id: create-rule
+  action: ruledb.rule.create
+  params:
+    priority: 100            # Rule priority (lower = higher priority)
+    direction: in             # in | out | both
+    action: block             # block | accept | quarantine
+    who_id: 2                # Who Object ID
+    what_id: 3                # What Object ID
+    name: "Block Executables" # Optional rule name
+  output: new_rule
+```
+
+Output fields: `priority` (int), `direction` (string), `action` (string), `who_id` (int), `what_id` (int), `raw` (JSON)
+
+### ruledb.rule.remove
+
+Delete a rule.
+
+```yaml
+- id: remove-rule
+  action: ruledb.rule.remove
+  params:
+    rule_id: 5
+```
+
+Output fields: `rule_id` (int)
 
 ---
 
